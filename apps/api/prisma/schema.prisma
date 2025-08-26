@@ -1,0 +1,140 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  role      String   @default("PARTICIPANT") // Changed from enum to string
+  cohorts   Cohort[] @relation("CohortMembers")
+  clauses   Clause[] @relation("ClauseCreator")
+  amendments Amendment[] @relation("AmendmentProposer")
+  tensionMeasurements TensionMeasurement[]
+  journalEntries JournalEntry[]
+  failureEntries FailureEntry[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("users")
+}
+
+model Cohort {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  members     User[]   @relation("CohortMembers")
+  contracts   Contract[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("cohorts")
+}
+
+model Contract {
+  id        String   @id @default(cuid())
+  title     String
+  clauses   Clause[]
+  cohort    Cohort   @relation(fields: [cohortId], references: [id])
+  cohortId  String
+  tensionMeasurements TensionMeasurement[]
+  journalEntries JournalEntry[]
+  failureEntries FailureEntry[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("contracts")
+}
+
+model Clause {
+  id         String   @id @default(cuid())
+  title      String
+  content    String
+  contract   Contract @relation(fields: [contractId], references: [id])
+  contractId String
+  createdBy  User     @relation("ClauseCreator", fields: [userId], references: [id])
+  userId     String
+  amendments Amendment[]
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("clauses")
+}
+
+model Amendment {
+  id        String   @id @default(cuid())
+  content   String
+  proposedBy User    @relation("AmendmentProposer", fields: [userId], references: [id])
+  userId    String
+  clause    Clause   @relation(fields: [clauseId], references: [id])
+  clauseId  String
+  status    String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("amendments")
+}
+
+model TensionMeasurement {
+  id        String   @id @default(cuid())
+  value     Int      // 1-5 scale
+  context   String?
+  contract  Contract @relation(fields: [contractId], references: [id])
+  contractId String
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+  createdAt DateTime @default(now())
+
+  @@map("tension_measurements")
+}
+
+model JournalEntry {
+  id        String   @id @default(cuid())
+  title     String
+  content   String
+  contract  Contract @relation(fields: [contractId], references: [id])
+  contractId String
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+  tags      String   // Changed from String[] to String for SQLite compatibility
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("journal_entries")
+}
+
+model FailureEntry {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  lessons     String
+  contract    Contract @relation(fields: [contractId], references: [id])
+  contractId  String
+  user        User     @relation(fields: [userId], references: [id])
+  userId      String
+  iterations  Iteration[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("failure_entries")
+}
+
+model Iteration {
+  id            String   @id @default(cuid())
+  description   String
+  outcome       String   // SUCCESS, FAILURE, PARTIAL
+  failureEntry  FailureEntry @relation(fields: [failureEntryId], references: [id])
+  failureEntryId String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("iterations")
+}

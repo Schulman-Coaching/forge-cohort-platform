@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: forge-cohort-db
+    environment:
+      POSTGRES_USER: forge_user
+      POSTGRES_PASSWORD: forge_password
+      POSTGRES_DB: forge_cohort
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - forge-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U forge_user -d forge_cohort"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: forge-cohort-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@forgecohort.com
+      PGADMIN_DEFAULT_PASSWORD: admin123
+    ports:
+      - "5050:80"
+    networks:
+      - forge-network
+    depends_on:
+      - postgres
+
+volumes:
+  postgres_data:
+
+networks:
+  forge-network:
+    driver: bridge
